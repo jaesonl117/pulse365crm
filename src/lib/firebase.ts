@@ -11,11 +11,15 @@ const firebaseConfig = {
   appId: "1:545884381357:web:e10674deb143ff183b2624"
 };
 
-// Initialize Firebase
+let app;
+let auth;
+let db;
+
 try {
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+  // Initialize Firebase
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
 
   // Connect to emulators in development
   if (import.meta.env.DEV) {
@@ -29,9 +33,9 @@ try {
   } else {
     console.log('Running in production mode');
   }
-
-  export { app, auth, db };
 } catch (error) {
   console.error('Error initializing Firebase:', error);
   throw error;
 }
+
+export { app, auth, db };
