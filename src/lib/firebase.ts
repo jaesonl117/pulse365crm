@@ -1,6 +1,11 @@
-import { initializeApp, getApps } from 'firebase/app';
+import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  connectFirestoreEmulator,
+  initializeFirestore,
+  CACHE_SIZE_UNLIMITED
+} from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBjs2gd4TP0AeGGJDOKB8TR16GtnbhOWAs",
@@ -19,7 +24,12 @@ try {
   // Initialize Firebase
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
-  db = getFirestore(app);
+  
+  // Initialize Firestore with settings
+  db = initializeFirestore(app, {
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+    experimentalForceLongPolling: true,
+  });
 
   // Connect to emulators in development
   if (import.meta.env.DEV) {
