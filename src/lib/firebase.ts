@@ -1,4 +1,4 @@
-import { initializeApp, getApps } from 'firebase/app';
+import { initializeApp, getApps, FirebaseApp } from '@firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { 
   initializeFirestore,
@@ -8,7 +8,7 @@ import {
   getFirestore,
   Firestore,
   enableIndexedDbPersistence
-} from 'firebase/firestore';
+} from '@firebase/firestore';
 
 // Debug function to check Firestore instance
 const debugFirestore = (db: Firestore | undefined, stage: string) => {
@@ -21,6 +21,26 @@ const debugFirestore = (db: Firestore | undefined, stage: string) => {
   }
 };
 
+// Initialize Firestore with fallback options
+const initializeFirestoreWithFallback = async (app: FirebaseApp): Promise<Firestore> => {
+  try {
+    console.log('[FIRESTORE] Attempting initialization with getFirestore...');
+    let db = getFirestore(app);
+    debugFirestore(db, 'GETFIRESTORE_INIT');
+    return db;
+  } catch (error) {
+    console.log('[FIRESTORE] First attempt failed, trying direct initialization:', error);
+    try {
+      const db = initializeFirestore(app, {});
+      debugFirestore(db, 'DIRECT_INIT');
+      return db;
+    } catch (directError) {
+      console.error('[FIRESTORE] Direct initialization failed:', directError);
+      throw directError;
+    }
+  }
+};
+
 const firebaseConfig = {
   apiKey: "AIzaSyBjs2gd4TP0AeGGJDOKB8TR16GtnbhOWAs",
   authDomain: "pulse365-crm.firebaseapp.com",
@@ -30,104 +50,85 @@ const firebaseConfig = {
   appId: "1:545884381357:web:e10674deb143ff183b2624"
 };
 
-let app;
+let app: FirebaseApp;
 let auth;
-let db: Firestore | undefined;
+let db: Firestore;
 
-try {
-  console.log('[INIT] Starting Firebase initialization...');
-  
-  // Initialize Firebase app
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-  console.log('[INIT] Firebase app initialized successfully', app);
-  console.log('[DEBUG] Available Firebase services:', Object.keys(app));
-
-  // Initialize Auth
+const initializeFirebase = async () => {
   try {
-    auth = getAuth(app);
-    console.log('[INIT] Firebase Auth initialized successfully', auth);
-  } catch (authError) {
-    console.error('[ERROR] Error initializing Firebase Auth:', authError);
-    throw authError;
-  }
-
-  // Initialize Firestore with detailed error tracking
-  try {
-    console.log('[FIRESTORE] Starting Firestore initialization...');
+    console.log('[INIT] Starting Firebase initialization...');
     
-    try {
-      // Stage 1: Basic Firestore initialization
-      console.log('[FIRESTORE] Attempting basic Firestore initialization...');
-      db = getFirestore(app);
-      debugFirestore(db, 'BASIC_INIT');
-      
-      if (!db) {
-        throw new Error('getFirestore() returned undefined');
-      }
+    // Initialize Firebase app
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    console.log('[INIT] Firebase app initialized successfully', app);
+    console.log('[DEBUG] Available Firebase services:', Object.keys(app));
 
-      // Test basic Firestore functionality before adding persistence
-      console.log('[FIRESTORE] Testing basic Firestore functionality...');
-      
-      // Stage 2: Add persistence only if basic initialization succeeded
-      console.log('[FIRESTORE] Basic initialization successful, attempting to add persistence...');
-      try {
-        db = initializeFirestore(app, {
-          localCache: persistentLocalCache({
-            tabManager: persistentMultipleTabManager()
-          })
-        });
-        debugFirestore(db, 'PERSISTENT_INIT');
-        console.log('[FIRESTORE] Successfully upgraded to persistent Firestore');
-      } catch (persistenceError) {
-        console.error('[ERROR] Failed to add persistence, falling back to basic Firestore:', persistenceError);
-        // Continue with basic Firestore instance
-      }
-    } catch (initialError) {
-      console.warn('[FIRESTORE] Initial initialization failed, trying alternative method...', initialError);
-      
-      try {
-        // Fallback: Try initializing without any special options
-        db = initializeFirestore(app, {});
-        debugFirestore(db, 'FALLBACK_INIT');
-        console.log('[FIRESTORE] Fallback initialization successful');
-      } catch (fallbackError) {
-        console.error('[ERROR] Fallback initialization also failed:', fallbackError);
-        throw fallbackError;
-      }
+    // Initialize Auth
+    try {
+      auth = getAuth(app);
+      console.log('[INIT] Firebase Auth initialized successfully', auth);
+    } catch (authError) {
+      console.error('[ERROR] Error initializing Firebase Auth:', authError);
+      throw authError;
     }
 
-  } catch (firestoreError) {
-    console.error('[ERROR] Critical Firestore initialization error:', firestoreError);
-    console.error('[ERROR] Error details:', {
-      name: firestoreError.name,
-      message: firestoreError.message,
-      stack: firestoreError.stack,
-      // @ts-ignore - checking for any additional Firebase-specific error properties
-      code: firestoreError.code,
-      // @ts-ignore
-      serverResponse: firestoreError.serverResponse
-    });
-    throw firestoreError;
-  }
-
-  // Connect to emulators in development
-  if (import.meta.env.DEV) {
+    // Initialize Firestore with fallback pattern
     try {
-      console.log('[EMULATOR] Attempting to connect to emulators...');
-      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+      db = await initializeFirestoreWithFallback(app);
+      console.log('[FIRESTORE] Basic initialization successful');
+
+      // Only attempt persistence after successful initialization
       if (db) {
-        connectFirestoreEmulator(db, 'localhost', 8080);
-        console.log('[EMULATOR] Successfully connected to emulators');
+        try {
+          await enableIndexedDbPersistence(db);
+          console.log('[FIRESTORE] Persistence enabled successfully');
+        } catch (persistenceError) {
+          if (persistenceError.code === 'failed-precondition') {
+            console.warn('[FIRESTORE] Multiple tabs open, persistence can only be enabled in one tab at a time.');
+          } else if (persistenceError.code === 'unimplemented') {
+            console.warn('[FIRESTORE] The current browser does not support persistence.');
+          } else {
+            console.error('[FIRESTORE] Persistence setup failed:', persistenceError);
+          }
+          // Continue without persistence
+        }
       }
-    } catch (emulatorError) {
-      console.error('[ERROR] Error connecting to emulators:', emulatorError);
+    } catch (firestoreError) {
+      console.error('[ERROR] Critical Firestore initialization error:', firestoreError);
+      console.error('[ERROR] Error details:', {
+        name: firestoreError.name,
+        message: firestoreError.message,
+        stack: firestoreError.stack,
+        // @ts-ignore - checking for any additional Firebase-specific error properties
+        code: firestoreError.code,
+        // @ts-ignore
+        serverResponse: firestoreError.serverResponse
+      });
+      throw firestoreError;
     }
-  } else {
-    console.log('[INFO] Running in production mode');
-  }
-} catch (error) {
-  console.error('[ERROR] Critical error in Firebase initialization:', error);
-  throw error;
-}
 
-export { app, auth, db };
+    // Connect to emulators in development
+    if (import.meta.env.DEV) {
+      try {
+        console.log('[EMULATOR] Attempting to connect to emulators...');
+        connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+        if (db) {
+          connectFirestoreEmulator(db, 'localhost', 8080);
+          console.log('[EMULATOR] Successfully connected to emulators');
+        }
+      } catch (emulatorError) {
+        console.error('[ERROR] Error connecting to emulators:', emulatorError);
+      }
+    } else {
+      console.log('[INFO] Running in production mode');
+    }
+  } catch (error) {
+    console.error('[ERROR] Critical error in Firebase initialization:', error);
+    throw error;
+  }
+};
+
+// Initialize Firebase and export the initialization promise
+const firebaseInit = initializeFirebase();
+
+export { app, auth, db, firebaseInit };
