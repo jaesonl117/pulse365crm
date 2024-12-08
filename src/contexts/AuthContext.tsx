@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, getFirestore } from 'firebase/firestore';
-import { auth, app } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 import { AuthContextType, UserProfile, RegisterData } from '../types/auth';
 import { registerUser, signIn, signOut } from '../services/auth';
 import { toast } from 'react-hot-toast';
@@ -20,11 +20,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const db = getFirestore(app);
 
   const fetchUserProfile = async (user: FirebaseUser) => {
-    if (!db) return;
-    
     try {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
@@ -38,7 +35,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setCurrentUser(user);
-      if (user && db) {
+      if (user) {
         await fetchUserProfile(user);
       } else {
         setUserProfile(null);
