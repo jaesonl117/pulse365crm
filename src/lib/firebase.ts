@@ -1,5 +1,5 @@
 // Import Firebase core functionality
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { 
   getFirestore,
@@ -16,8 +16,10 @@ const firebaseConfig = {
   appId: "1:545884381357:web:e10674deb143ff183b2624"
 };
 
-// Initialize Firebase outside try-catch
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+
+// Initialize Auth and Firestore
 const auth = getAuth(app);
 const db = getFirestore(app);
 

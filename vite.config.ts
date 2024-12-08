@@ -10,7 +10,13 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['lucide-react', 'recharts'],
+    include: [
+      'lucide-react', 
+      'recharts',
+      'firebase/app',
+      'firebase/auth',
+      'firebase/firestore'
+    ],
     esbuildOptions: {
       target: 'es2020',
     },
@@ -25,6 +31,7 @@ export default defineConfig({
           'vendor-tiptap': ['@tiptap/react', '@tiptap/starter-kit', '@tiptap/extension-link', '@tiptap/extension-placeholder'],
           'vendor-ui': ['@headlessui/react', 'react-hook-form', '@hookform/resolvers'],
           'lucide-icons': ['lucide-react'],
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
         },
       },
     },
