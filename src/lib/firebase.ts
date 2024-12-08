@@ -7,6 +7,7 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager
 } from 'firebase/firestore';
+import 'firebase/firestore';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
