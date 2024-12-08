@@ -12,14 +12,26 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+try {
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-// Connect to emulators in development
-if (import.meta.env.DEV) {
-  connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-  connectFirestoreEmulator(db, 'localhost', 8080);
+  // Connect to emulators in development
+  if (import.meta.env.DEV) {
+    try {
+      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+      connectFirestoreEmulator(db, 'localhost', 8080);
+      console.log('Connected to Firebase emulators');
+    } catch (error) {
+      console.error('Error connecting to emulators:', error);
+    }
+  } else {
+    console.log('Running in production mode');
+  }
+
+  export { app, auth, db };
+} catch (error) {
+  console.error('Error initializing Firebase:', error);
+  throw error;
 }
-
-export { app, auth, db };
