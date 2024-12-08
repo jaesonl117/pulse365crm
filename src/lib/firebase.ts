@@ -6,19 +6,19 @@ const firebaseConfig = {
   apiKey: "AIzaSyBjs2gd4TP0AeGGJDOKB8TR16GtnbhOWAs",
   authDomain: "pulse365-crm.firebaseapp.com",
   projectId: "pulse365-crm",
-  storageBucket: "pulse365-crm.firebasestorage.app",
+  storageBucket: "pulse365-crm.appspot.com",
   messagingSenderId: "545884381357",
   appId: "1:545884381357:web:e10674deb143ff183b2624"
 };
 
 // Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = getFirestore();
 
 // Connect to emulators in development
 if (import.meta.env.DEV) {
-  connectAuthEmulator(auth, 'http://localhost:9099');
+  connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
   connectFirestoreEmulator(db, 'localhost', 8080);
 }
 
