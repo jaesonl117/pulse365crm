@@ -5,7 +5,8 @@ import {
   initializeFirestore,
   connectFirestoreEmulator,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
+  getFirestore
 } from 'firebase/firestore';
 import 'firebase/firestore';
 
@@ -37,14 +38,19 @@ try {
     throw authError;
   }
 
-  // Initialize Firestore with persistent cache
+  // Initialize Firestore with staged approach
   try {
+    // Stage 1: Initialize basic Firestore to ensure proper registration
+    db = getFirestore(app);
+    console.log('Basic Firestore instance created successfully');
+
+    // Stage 2: Upgrade to persistent cache
     db = initializeFirestore(app, {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
       })
     });
-    console.log('Firestore initialized successfully with persistent cache');
+    console.log('Firestore upgraded with persistent cache successfully');
   } catch (firestoreError) {
     console.error('Error initializing Firestore:', firestoreError);
     throw firestoreError;
