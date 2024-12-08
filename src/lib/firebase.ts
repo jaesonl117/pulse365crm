@@ -1,4 +1,3 @@
-// Import Firebase core functionality
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { 
@@ -6,11 +5,22 @@ import {
   connectFirestoreEmulator,
   persistentLocalCache,
   persistentMultipleTabManager,
-  getFirestore
+  getFirestore,
+  Firestore,
+  enableIndexedDbPersistence
 } from 'firebase/firestore';
-import 'firebase/firestore';
 
-// Your web app's Firebase configuration
+// Debug function to check Firestore instance
+const debugFirestore = (db: Firestore | undefined, stage: string) => {
+  console.log(`[DEBUG ${stage}] Firestore instance:`, db);
+  if (db) {
+    console.log(`[DEBUG ${stage}] Firestore type:`, Object.prototype.toString.call(db));
+    console.log(`[DEBUG ${stage}] Firestore properties:`, Object.keys(db));
+    // @ts-ignore - accessing internal property for debugging
+    console.log(`[DEBUG ${stage}] Internal state:`, db._initialized, db._terminated);
+  }
+};
+
 const firebaseConfig = {
   apiKey: "AIzaSyBjs2gd4TP0AeGGJDOKB8TR16GtnbhOWAs",
   authDomain: "pulse365-crm.firebaseapp.com",
@@ -22,55 +32,101 @@ const firebaseConfig = {
 
 let app;
 let auth;
-let db;
+let db: Firestore | undefined;
 
 try {
+  console.log('[INIT] Starting Firebase initialization...');
+  
   // Initialize Firebase app
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-  console.log('Firebase app initialized successfully');
+  console.log('[INIT] Firebase app initialized successfully', app);
+  console.log('[DEBUG] Available Firebase services:', Object.keys(app));
 
   // Initialize Auth
   try {
     auth = getAuth(app);
-    console.log('Firebase Auth initialized successfully');
+    console.log('[INIT] Firebase Auth initialized successfully', auth);
   } catch (authError) {
-    console.error('Error initializing Firebase Auth:', authError);
+    console.error('[ERROR] Error initializing Firebase Auth:', authError);
     throw authError;
   }
 
-  // Initialize Firestore with staged approach
+  // Initialize Firestore with detailed error tracking
   try {
-    // Stage 1: Initialize basic Firestore to ensure proper registration
-    db = getFirestore(app);
-    console.log('Basic Firestore instance created successfully');
+    console.log('[FIRESTORE] Starting Firestore initialization...');
+    
+    try {
+      // Stage 1: Basic Firestore initialization
+      console.log('[FIRESTORE] Attempting basic Firestore initialization...');
+      db = getFirestore(app);
+      debugFirestore(db, 'BASIC_INIT');
+      
+      if (!db) {
+        throw new Error('getFirestore() returned undefined');
+      }
 
-    // Stage 2: Upgrade to persistent cache
-    db = initializeFirestore(app, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-      })
-    });
-    console.log('Firestore upgraded with persistent cache successfully');
+      // Test basic Firestore functionality before adding persistence
+      console.log('[FIRESTORE] Testing basic Firestore functionality...');
+      
+      // Stage 2: Add persistence only if basic initialization succeeded
+      console.log('[FIRESTORE] Basic initialization successful, attempting to add persistence...');
+      try {
+        db = initializeFirestore(app, {
+          localCache: persistentLocalCache({
+            tabManager: persistentMultipleTabManager()
+          })
+        });
+        debugFirestore(db, 'PERSISTENT_INIT');
+        console.log('[FIRESTORE] Successfully upgraded to persistent Firestore');
+      } catch (persistenceError) {
+        console.error('[ERROR] Failed to add persistence, falling back to basic Firestore:', persistenceError);
+        // Continue with basic Firestore instance
+      }
+    } catch (initialError) {
+      console.warn('[FIRESTORE] Initial initialization failed, trying alternative method...', initialError);
+      
+      try {
+        // Fallback: Try initializing without any special options
+        db = initializeFirestore(app, {});
+        debugFirestore(db, 'FALLBACK_INIT');
+        console.log('[FIRESTORE] Fallback initialization successful');
+      } catch (fallbackError) {
+        console.error('[ERROR] Fallback initialization also failed:', fallbackError);
+        throw fallbackError;
+      }
+    }
+
   } catch (firestoreError) {
-    console.error('Error initializing Firestore:', firestoreError);
+    console.error('[ERROR] Critical Firestore initialization error:', firestoreError);
+    console.error('[ERROR] Error details:', {
+      name: firestoreError.name,
+      message: firestoreError.message,
+      stack: firestoreError.stack,
+      // @ts-ignore - checking for any additional Firebase-specific error properties
+      code: firestoreError.code,
+      // @ts-ignore
+      serverResponse: firestoreError.serverResponse
+    });
     throw firestoreError;
   }
 
   // Connect to emulators in development
   if (import.meta.env.DEV) {
     try {
+      console.log('[EMULATOR] Attempting to connect to emulators...');
       connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-      connectFirestoreEmulator(db, 'localhost', 8080);
-      console.log('Connected to Firebase emulators successfully');
+      if (db) {
+        connectFirestoreEmulator(db, 'localhost', 8080);
+        console.log('[EMULATOR] Successfully connected to emulators');
+      }
     } catch (emulatorError) {
-      console.error('Error connecting to emulators:', emulatorError);
-      // Don't throw here as emulator connection isn't critical for app function
+      console.error('[ERROR] Error connecting to emulators:', emulatorError);
     }
   } else {
-    console.log('Running in production mode');
+    console.log('[INFO] Running in production mode');
   }
 } catch (error) {
-  console.error('Critical error initializing Firebase:', error);
+  console.error('[ERROR] Critical error in Firebase initialization:', error);
   throw error;
 }
 
