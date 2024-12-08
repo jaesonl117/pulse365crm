@@ -2,8 +2,10 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { 
-  getFirestore,
-  connectFirestoreEmulator
+  initializeFirestore,
+  connectFirestoreEmulator,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
@@ -34,10 +36,14 @@ try {
     throw authError;
   }
 
-  // Initialize Firestore
+  // Initialize Firestore with persistent cache
   try {
-    db = getFirestore(app);
-    console.log('Firestore initialized successfully');
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    });
+    console.log('Firestore initialized successfully with persistent cache');
   } catch (firestoreError) {
     console.error('Error initializing Firestore:', firestoreError);
     throw firestoreError;
