@@ -5,9 +5,11 @@ import {
   updateProfile,
   User
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { doc, setDoc, getFirestore } from 'firebase/firestore';
+import { auth, app } from '../lib/firebase';
 import { RegisterData, UserRole } from '../types/auth';
+
+const db = getFirestore(app);
 
 export const registerUser = async (data: RegisterData): Promise<User> => {
   const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
