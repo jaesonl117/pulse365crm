@@ -15,10 +15,7 @@ export default defineConfig({
       'recharts',
       'firebase/app',
       'firebase/auth',
-      'firebase/firestore',
-      '@firebase/firestore',
-      '@firebase/app',
-      '@firebase/auth'
+      'firebase/firestore'
     ],
     esbuildOptions: {
       target: 'es2020',
@@ -37,10 +34,7 @@ export default defineConfig({
           firebase: [
             'firebase/app',
             'firebase/auth',
-            'firebase/firestore',
-            '@firebase/firestore',
-            '@firebase/app',
-            '@firebase/auth'
+            'firebase/firestore'
           ],
         },
       },
