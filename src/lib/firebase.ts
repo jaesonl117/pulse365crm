@@ -14,7 +14,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore();
+const db = getFirestore(app);
 
 // Connect to emulators in development
 if (import.meta.env.DEV) {
